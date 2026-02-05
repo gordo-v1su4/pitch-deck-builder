@@ -80,36 +80,39 @@ const stylePresets: Record<StyleVariant, ColorPalette> = {
   },
 };
 
-// Style configurations - visual treatment for each preset
+// Style configurations - dramatically different visual treatments based on references
 const styleConfigs: Record<StyleVariant, StyleConfig> = {
+  // CINEMATIC: Like LOGAN/LATIN X - full-bleed photos, dramatic overlays, film treatment
   cinematic: {
-    titleSize: 'lg',
+    titleSize: 'xl',
     titleWeight: 'normal',
     titleTracking: 'wider',
     bodySize: 'md',
     padding: 'spacious',
-    borders: 'subtle',
+    borders: 'none',
     dividerStyle: 'gradient',
-    overlayIntensity: 'medium',
+    overlayIntensity: 'heavy',
     showSectionNumbers: false,
     showAccentLines: true,
     showCornerFrames: false,
     letterboxBars: true,
   },
+  // BOLD: Like INKBOX - grid layouts, solid color blocks, high contrast, modular
   bold: {
     titleSize: 'xl',
     titleWeight: 'bold',
     titleTracking: 'tight',
     bodySize: 'lg',
-    padding: 'normal',
+    padding: 'compact',
     borders: 'bold',
     dividerStyle: 'block',
     overlayIntensity: 'light',
     showSectionNumbers: true,
-    showAccentLines: true,
+    showAccentLines: false,
     showCornerFrames: false,
     letterboxBars: false,
   },
+  // MINIMAL: Clean, lots of whitespace, thin lines, understated
   minimal: {
     titleSize: 'md',
     titleWeight: 'light',
@@ -124,6 +127,7 @@ const styleConfigs: Record<StyleVariant, StyleConfig> = {
     showCornerFrames: false,
     letterboxBars: false,
   },
+  // NOIR: Like GROSHEV - dark, moody, orange/gold accents, film stills grid
   noir: {
     titleSize: 'lg',
     titleWeight: 'medium',
@@ -138,11 +142,12 @@ const styleConfigs: Record<StyleVariant, StyleConfig> = {
     showCornerFrames: true,
     letterboxBars: true,
   },
+  // NEON: Like Hairstyles/Cyberpunk - vibrant, 80s pop, script-style energy
   neon: {
-    titleSize: 'lg',
+    titleSize: 'xl',
     titleWeight: 'bold',
-    titleTracking: 'wider',
-    bodySize: 'md',
+    titleTracking: 'normal',
+    bodySize: 'lg',
     padding: 'normal',
     borders: 'accent',
     dividerStyle: 'geometric',
@@ -210,12 +215,16 @@ export function App() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Apply style preset when variant changes - always applies colors
+  // Apply style preset when variant changes - only changes visual treatment, NOT colors if images exist
   const applyStylePreset = useCallback((variant: StyleVariant) => {
     setStyleVariant(variant);
-    setColors(stylePresets[variant]);
+    // Only apply preset colors if NO images are uploaded
+    // If images exist, keep the extracted colors locked
+    if (referenceImages.length === 0) {
+      setColors(stylePresets[variant]);
+    }
     showToast(`${variant.charAt(0).toUpperCase() + variant.slice(1)} style applied`, 'info');
-  }, [showToast]);
+  }, [showToast, referenceImages.length]);
 
   // Load saved state on mount
   useEffect(() => {
@@ -277,9 +286,9 @@ export function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check if already at max images
-    if (referenceImages.length >= 4) {
-      showToast('Maximum 4 images allowed', 'error');
+    // Check if already at max images (10 - one per slide)
+    if (referenceImages.length >= 10) {
+      showToast('Maximum 10 images allowed (one per slide)', 'error');
       return;
     }
 
@@ -605,11 +614,11 @@ export function App() {
           </div>
         </div>
 
-        {/* Image Upload - Multiple Images */}
+        {/* Image Upload - Multiple Images (one per slide) */}
         <div className="p-4 sidebar-section">
           <div className="flex items-center justify-between mb-3">
             <label className="text-[10px] text-white/50 uppercase tracking-[0.15em]">Images</label>
-            <span className="text-[10px] text-white/30">{referenceImages.length}/4</span>
+            <span className="text-[10px] text-white/30">{referenceImages.length}/10</span>
           </div>
           <input
             ref={fileInputRef}
@@ -619,9 +628,9 @@ export function App() {
             className="hidden"
           />
 
-          {/* Image Grid */}
-          <div className="grid grid-cols-2 gap-1.5">
-            {[0, 1, 2, 3].map((index) => {
+          {/* Image Grid - 5 columns for 10 images */}
+          <div className="grid grid-cols-5 gap-1">
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((index) => {
               const image = referenceImages[index];
               const isActive = index === activeImageIndex && image;
 
@@ -639,7 +648,7 @@ export function App() {
                   onClick={() => {
                     if (image) {
                       setActiveImageIndex(index);
-                    } else if (referenceImages.length < 4) {
+                    } else if (referenceImages.length < 10) {
                       fileInputRef.current?.click();
                     }
                   }}
@@ -647,24 +656,29 @@ export function App() {
                   {image ? (
                     <div className="group absolute inset-0">
                       <img src={image} alt={`Reference ${index + 1}`} className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors" />
 
                       {/* Active indicator */}
                       {isActive && (
-                        <div className="absolute top-1 left-1 w-2 h-2 bg-amber-500" />
+                        <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-amber-500" />
                       )}
 
-                      {/* Hover actions */}
-                      <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Slide number */}
+                      <div className="absolute bottom-0 right-0 text-[7px] text-white/50 bg-black/50 px-0.5">
+                        {index + 1}
+                      </div>
+
+                      {/* Hover actions - smaller for compact grid */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             extractColorsFromImage(index);
                           }}
-                          className="w-7 h-7 bg-white/20 flex items-center justify-center hover:bg-amber-500 transition-colors text-white"
+                          className="w-5 h-5 bg-white/30 flex items-center justify-center hover:bg-amber-500 transition-colors text-white"
                           title="Extract colors"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                           </svg>
                         </button>
@@ -673,10 +687,10 @@ export function App() {
                             e.stopPropagation();
                             removeImage(index);
                           }}
-                          className="w-7 h-7 bg-white/20 flex items-center justify-center hover:bg-red-500 transition-colors text-white"
+                          className="w-5 h-5 bg-white/30 flex items-center justify-center hover:bg-red-500 transition-colors text-white"
                           title="Remove"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
@@ -799,25 +813,30 @@ export function App() {
             </button>
           </div>
 
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {blocks.map((block) => (
               <div
                 key={block.id}
-                draggable
-                onDragStart={() => handleDragStart(block.id)}
-                onDragOver={(e) => handleDragOver(e, block.id)}
-                onDrop={() => handleDrop(block.id)}
-                onDragEnd={handleDragEnd}
                 className={cn(
-                  "p-2.5 border-l-2 transition-all cursor-grab active:cursor-grabbing group",
+                  "border-l-2 transition-all",
                   block.visible
-                    ? "bg-white/2 border-l-amber-500/50 hover:bg-white/4"
-                    : "bg-transparent border-l-white/10 opacity-40 hover:opacity-60",
-                  dragOverBlock === block.id && "border-l-amber-500 bg-amber-500/10",
-                  draggedBlock === block.id && "opacity-20"
+                    ? "bg-white/2 border-l-amber-500/50"
+                    : "bg-transparent border-l-white/10 opacity-40"
                 )}
               >
-                <div className="flex items-center gap-2">
+                {/* Block header - draggable */}
+                <div
+                  draggable
+                  onDragStart={() => handleDragStart(block.id)}
+                  onDragOver={(e) => handleDragOver(e, block.id)}
+                  onDrop={() => handleDrop(block.id)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "p-2.5 cursor-grab active:cursor-grabbing group flex items-center gap-2",
+                    dragOverBlock === block.id && "bg-amber-500/10",
+                    draggedBlock === block.id && "opacity-20"
+                  )}
+                >
                   <div className="flex flex-col gap-[2px] opacity-30 group-hover:opacity-50">
                     <div className="w-2.5 h-[1.5px] bg-white" />
                     <div className="w-2.5 h-[1.5px] bg-white" />
@@ -850,6 +869,32 @@ export function App() {
                     </svg>
                   </button>
                 </div>
+
+                {/* Text editing fields - shown when editing mode is on */}
+                {isEditing && block.visible && (
+                  <div className="px-3 pb-3 space-y-2">
+                    <div>
+                      <label className="text-[8px] text-white/30 uppercase tracking-wider">Title</label>
+                      <input
+                        type="text"
+                        value={block.title}
+                        onChange={(e) => handleBlockUpdate({ ...block, title: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 text-white/90 text-[11px] px-2 py-1.5 focus:outline-none focus:border-amber-500/50"
+                        placeholder="Block title..."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] text-white/30 uppercase tracking-wider">Content</label>
+                      <textarea
+                        value={block.content}
+                        onChange={(e) => handleBlockUpdate({ ...block, content: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 text-white/90 text-[11px] px-2 py-1.5 focus:outline-none focus:border-amber-500/50 resize-none"
+                        placeholder="Block content..."
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
