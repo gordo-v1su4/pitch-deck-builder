@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { BlockData, ColorPalette } from '../types';
+import type { BlockData, ColorPalette, StyleConfig, StyleVariant } from '../types';
 
 interface BlockProps {
   block: BlockData;
@@ -8,6 +8,14 @@ interface BlockProps {
   imageIndex?: number;
   isEditing: boolean;
   onUpdate: (block: BlockData) => void;
+  styleConfig?: StyleConfig;
+  styleVariant?: StyleVariant;
+}
+
+interface DividerProps {
+  colors: ColorPalette;
+  styleConfig: StyleConfig;
+  styleVariant: StyleVariant;
 }
 
 const EditableText: React.FC<{
@@ -78,6 +86,136 @@ const EditableText: React.FC<{
       style={style}
     />
   );
+};
+
+// DIVIDER COMPONENT - Transitions between blocks
+export const DividerBlock: React.FC<DividerProps> = ({ colors, styleConfig, styleVariant: _styleVariant }) => {
+  const dividerStyle = styleConfig.dividerStyle;
+
+  // Gradient fade divider
+  if (dividerStyle === 'gradient') {
+    return (
+      <div
+        className="w-full relative overflow-hidden"
+        style={{ height: '80px', backgroundColor: colors.dark }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(180deg, transparent 0%, ${colors.dark} 30%, ${colors.dark} 70%, transparent 100%)`,
+          }}
+        />
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-[1px]"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${colors.accent}40, transparent)`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Simple line divider
+  if (dividerStyle === 'line') {
+    return (
+      <div
+        className="w-full flex items-center justify-center"
+        style={{ height: '60px', backgroundColor: colors.dark }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-[1px]" style={{ backgroundColor: `${colors.accent}60` }} />
+          <div className="w-2 h-2" style={{ backgroundColor: colors.accent }} />
+          <div className="w-16 h-[1px]" style={{ backgroundColor: `${colors.accent}60` }} />
+        </div>
+      </div>
+    );
+  }
+
+  // Solid block divider with accent
+  if (dividerStyle === 'block') {
+    return (
+      <div
+        className="w-full relative"
+        style={{ height: '40px', backgroundColor: colors.accent }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 50%, ${colors.secondary} 100%)`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Soft fade divider
+  if (dividerStyle === 'fade') {
+    return (
+      <div
+        className="w-full"
+        style={{ height: '120px' }}
+      >
+        <div
+          className="w-full h-full"
+          style={{
+            background: `linear-gradient(180deg, ${colors.dark} 0%, ${colors.dark}00 50%, ${colors.dark} 100%)`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Geometric pattern divider
+  if (dividerStyle === 'geometric') {
+    return (
+      <div
+        className="w-full relative overflow-hidden"
+        style={{ height: '80px', backgroundColor: colors.dark }}
+      >
+        {/* Diagonal lines pattern */}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: `repeating-linear-gradient(45deg, ${colors.accent} 0px, ${colors.accent} 1px, transparent 1px, transparent 10px)`,
+          }}
+        />
+        {/* Center accent */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="w-3 h-3 rotate-45" style={{ border: `1px solid ${colors.accent}` }} />
+          <div className="w-4 h-4 rotate-45" style={{ backgroundColor: colors.accent }} />
+          <div className="w-3 h-3 rotate-45" style={{ border: `1px solid ${colors.accent}` }} />
+        </div>
+        {/* Top and bottom lines */}
+        <div className="absolute top-0 left-[10%] right-[10%] h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${colors.secondary}30, transparent)` }} />
+        <div className="absolute bottom-0 left-[10%] right-[10%] h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${colors.secondary}30, transparent)` }} />
+      </div>
+    );
+  }
+
+  // Default fallback
+  return (
+    <div
+      className="w-full"
+      style={{ height: '40px', backgroundColor: colors.dark }}
+    />
+  );
+};
+
+// Helper to get style-based classes (exported for use in blocks)
+export const getStyleClasses = (styleConfig?: StyleConfig) => {
+  if (!styleConfig) return { title: '', body: '', padding: '5%' };
+
+  const titleSizes = { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' };
+  const titleWeights = { light: 'font-light', normal: 'font-normal', medium: 'font-medium', bold: 'font-bold' };
+  const titleTrackings = { tight: 'tracking-tight', normal: 'tracking-normal', wide: 'tracking-wide', wider: 'tracking-[0.25em]' };
+  const bodySizes = { sm: 'text-sm', md: 'text-base', lg: 'text-lg' };
+  const paddings = { compact: '3%', normal: '5%', spacious: '7%' };
+
+  return {
+    title: `${titleSizes[styleConfig.titleSize]} ${titleWeights[styleConfig.titleWeight]} ${titleTrackings[styleConfig.titleTracking]}`,
+    body: bodySizes[styleConfig.bodySize],
+    padding: paddings[styleConfig.padding],
+  };
 };
 
 // HERO BLOCK
@@ -817,9 +955,11 @@ export const renderBlock = (
   colors: ColorPalette,
   referenceImages: string[],
   isEditing: boolean,
-  onUpdate: (block: BlockData) => void
+  onUpdate: (block: BlockData) => void,
+  styleConfig?: StyleConfig,
+  styleVariant?: StyleVariant
 ): React.ReactNode => {
-  const baseProps = { block, colors, referenceImages, isEditing, onUpdate };
+  const baseProps = { block, colors, referenceImages, isEditing, onUpdate, styleConfig, styleVariant };
 
   switch (block.type) {
     case 'hero':
@@ -842,7 +982,21 @@ export const renderBlock = (
       return <StakesBlock {...baseProps} />;
     case 'closing':
       return <ClosingBlock {...baseProps} imageIndex={3} />;
+    case 'divider':
+      if (styleConfig && styleVariant) {
+        return <DividerBlock colors={colors} styleConfig={styleConfig} styleVariant={styleVariant} />;
+      }
+      return null;
     default:
       return null;
   }
+};
+
+// Render divider between blocks
+export const renderDivider = (
+  colors: ColorPalette,
+  styleConfig: StyleConfig,
+  styleVariant: StyleVariant
+): React.ReactNode => {
+  return <DividerBlock colors={colors} styleConfig={styleConfig} styleVariant={styleVariant} />;
 };

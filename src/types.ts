@@ -7,7 +7,7 @@ export interface BlockData {
   visible: boolean;
 }
 
-export type BlockType = 
+export type BlockType =
   | 'hero'
   | 'logline'
   | 'story'
@@ -17,7 +17,33 @@ export type BlockType =
   | 'motif'
   | 'theme'
   | 'stakes'
-  | 'closing';
+  | 'closing'
+  | 'divider';
+
+export type StyleVariant = 'cinematic' | 'bold' | 'minimal' | 'noir' | 'neon';
+
+// Style-specific visual treatments
+export interface StyleConfig {
+  // Typography
+  titleSize: 'sm' | 'md' | 'lg' | 'xl';
+  titleWeight: 'light' | 'normal' | 'medium' | 'bold';
+  titleTracking: 'tight' | 'normal' | 'wide' | 'wider';
+  bodySize: 'sm' | 'md' | 'lg';
+
+  // Spacing
+  padding: 'compact' | 'normal' | 'spacious';
+
+  // Visual treatment
+  borders: 'none' | 'subtle' | 'bold' | 'accent';
+  dividerStyle: 'gradient' | 'line' | 'block' | 'fade' | 'geometric';
+  overlayIntensity: 'light' | 'medium' | 'heavy';
+
+  // Decorations
+  showSectionNumbers: boolean;
+  showAccentLines: boolean;
+  showCornerFrames: boolean;
+  letterboxBars: boolean;
+}
 
 export interface ColorPalette {
   primary: string;

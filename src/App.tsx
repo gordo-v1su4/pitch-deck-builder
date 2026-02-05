@@ -5,12 +5,11 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { cn } from './utils/cn';
 import { extractColors, defaultColors } from './utils/colorExtractor';
-import { renderBlock } from './components/BlockComponents';
-import type { BlockData, ColorPalette } from './types';
+import { renderBlock, renderDivider } from './components/BlockComponents';
+import type { BlockData, ColorPalette, StyleConfig, StyleVariant } from './types';
 
 gsap.registerPlugin(ScrollTrigger);
 
-type StyleVariant = 'cinematic' | 'bold' | 'minimal' | 'noir' | 'neon';
 type PreviewMode = 'html' | 'pdf';
 
 interface Toast {
@@ -78,6 +77,80 @@ const stylePresets: Record<StyleVariant, ColorPalette> = {
     accent: '#39ff14',
     dark: '#0a0014',
     light: '#ffffff',
+  },
+};
+
+// Style configurations - visual treatment for each preset
+const styleConfigs: Record<StyleVariant, StyleConfig> = {
+  cinematic: {
+    titleSize: 'lg',
+    titleWeight: 'normal',
+    titleTracking: 'wider',
+    bodySize: 'md',
+    padding: 'spacious',
+    borders: 'subtle',
+    dividerStyle: 'gradient',
+    overlayIntensity: 'medium',
+    showSectionNumbers: false,
+    showAccentLines: true,
+    showCornerFrames: false,
+    letterboxBars: true,
+  },
+  bold: {
+    titleSize: 'xl',
+    titleWeight: 'bold',
+    titleTracking: 'tight',
+    bodySize: 'lg',
+    padding: 'normal',
+    borders: 'bold',
+    dividerStyle: 'block',
+    overlayIntensity: 'light',
+    showSectionNumbers: true,
+    showAccentLines: true,
+    showCornerFrames: false,
+    letterboxBars: false,
+  },
+  minimal: {
+    titleSize: 'md',
+    titleWeight: 'light',
+    titleTracking: 'wide',
+    bodySize: 'sm',
+    padding: 'spacious',
+    borders: 'none',
+    dividerStyle: 'fade',
+    overlayIntensity: 'light',
+    showSectionNumbers: false,
+    showAccentLines: false,
+    showCornerFrames: false,
+    letterboxBars: false,
+  },
+  noir: {
+    titleSize: 'lg',
+    titleWeight: 'medium',
+    titleTracking: 'wide',
+    bodySize: 'md',
+    padding: 'normal',
+    borders: 'accent',
+    dividerStyle: 'line',
+    overlayIntensity: 'heavy',
+    showSectionNumbers: false,
+    showAccentLines: true,
+    showCornerFrames: true,
+    letterboxBars: true,
+  },
+  neon: {
+    titleSize: 'lg',
+    titleWeight: 'bold',
+    titleTracking: 'wider',
+    bodySize: 'md',
+    padding: 'normal',
+    borders: 'accent',
+    dividerStyle: 'geometric',
+    overlayIntensity: 'medium',
+    showSectionNumbers: true,
+    showAccentLines: true,
+    showCornerFrames: true,
+    letterboxBars: false,
   },
 };
 
@@ -890,19 +963,26 @@ export function App() {
             )}
             style={{ backgroundColor: colors.dark }}
           >
-            {visibleBlocks.map((block) => (
-              <div
-                key={block.id}
-                className={cn(
-                  "slide-block",
-                  previewMode === 'html' && "will-change-transform"
+            {visibleBlocks.map((block, index) => (
+              <React.Fragment key={block.id}>
+                <div
+                  className={cn(
+                    "slide-block",
+                    previewMode === 'html' && "will-change-transform"
+                  )}
+                  style={{
+                    opacity: previewMode === 'pdf' ? 1 : undefined,
+                  }}
+                >
+                  {renderBlock(block, colors, referenceImages, isEditing, handleBlockUpdate, styleConfigs[styleVariant], styleVariant)}
+                </div>
+                {/* Add divider between blocks (not after last block) */}
+                {index < visibleBlocks.length - 1 && (
+                  <div className="slide-block">
+                    {renderDivider(colors, styleConfigs[styleVariant], styleVariant)}
+                  </div>
                 )}
-                style={{
-                  opacity: previewMode === 'pdf' ? 1 : undefined,
-                }}
-              >
-                {renderBlock(block, colors, referenceImages, isEditing, handleBlockUpdate)}
-              </div>
+              </React.Fragment>
             ))}
 
             {visibleBlocks.length === 0 && (
