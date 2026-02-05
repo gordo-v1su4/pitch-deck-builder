@@ -513,7 +513,7 @@ export function App() {
 
   const visibleBlocks = blocks.filter(b => b.visible);
 
-  // GSAP scroll animations for HTML preview
+  // GSAP scroll animations for HTML preview - dynamic and varied
   useEffect(() => {
     if (previewMode !== 'html') {
       // Kill any existing triggers when switching away from HTML mode
@@ -529,33 +529,89 @@ export function App() {
       const slides = container.querySelectorAll('.slide-block');
       if (!slides.length) return;
 
-      // Reset all slides to visible first (for PDF mode compatibility)
+      // Reset all slides
       slides.forEach((slide) => {
-        gsap.set(slide, { opacity: 1, y: 0, scale: 1 });
+        gsap.set(slide, { opacity: 1, y: 0, scale: 1, rotateX: 0 });
       });
 
-      // Apply scroll animations
-      slides.forEach((slide) => {
-        gsap.fromTo(slide,
-          {
-            opacity: 0,
-            y: 60,
-            scale: 0.97,
+      // Apply varied scroll animations based on index
+      slides.forEach((slide, index) => {
+        const isEven = index % 2 === 0;
+        const isThird = index % 3 === 0;
+
+        // Different animation patterns
+        let fromVars: gsap.TweenVars;
+        let toVars: gsap.TweenVars;
+
+        if (index === 0) {
+          // Hero - dramatic scale up
+          fromVars = { opacity: 0, scale: 0.9, y: 0 };
+          toVars = { opacity: 1, scale: 1, y: 0, duration: 1.2, ease: 'power4.out' };
+        } else if (isThird) {
+          // Every third slide - slide from side with rotation
+          fromVars = { opacity: 0, x: isEven ? -80 : 80, rotateY: isEven ? -5 : 5 };
+          toVars = { opacity: 1, x: 0, rotateY: 0, duration: 1, ease: 'power3.out' };
+        } else if (isEven) {
+          // Even slides - rise up with scale
+          fromVars = { opacity: 0, y: 100, scale: 0.95 };
+          toVars = { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power2.out' };
+        } else {
+          // Odd slides - fade with slight parallax
+          fromVars = { opacity: 0, y: 60, filter: 'blur(10px)' };
+          toVars = { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, ease: 'power2.out' };
+        }
+
+        gsap.fromTo(slide, fromVars, {
+          ...toVars,
+          scrollTrigger: {
+            trigger: slide,
+            start: 'top 90%',
+            end: 'top 30%',
+            toggleActions: 'play none none reverse',
+            scrub: index === 0 ? false : 0.5, // Scrub effect for smoother scrolling (except hero)
           },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.8,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: slide,
-              start: 'top 85%',
-              end: 'top 20%',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
+        });
+
+        // Animate internal elements for extra dynamism
+        const title = slide.querySelector('h3, .font-display');
+        const content = slide.querySelector('.font-body, textarea');
+
+        if (title) {
+          gsap.fromTo(title,
+            { opacity: 0, y: 20, clipPath: 'inset(0 100% 0 0)' },
+            {
+              opacity: 1,
+              y: 0,
+              clipPath: 'inset(0 0% 0 0)',
+              duration: 0.6,
+              delay: 0.2,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: slide,
+                start: 'top 80%',
+                toggleActions: 'play none none reverse',
+              },
+            }
+          );
+        }
+
+        if (content) {
+          gsap.fromTo(content,
+            { opacity: 0, y: 15 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.5,
+              delay: 0.35,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: slide,
+                start: 'top 80%',
+                toggleActions: 'play none none reverse',
+              },
+            }
+          );
+        }
       });
     }, 150);
 
@@ -824,7 +880,7 @@ export function App() {
                     : "bg-transparent border-l-white/10 opacity-40"
                 )}
               >
-                {/* Block header - draggable */}
+                {/* Block header - compact, draggable */}
                 <div
                   draggable
                   onDragStart={() => handleDragStart(block.id)}
@@ -832,67 +888,61 @@ export function App() {
                   onDrop={() => handleDrop(block.id)}
                   onDragEnd={handleDragEnd}
                   className={cn(
-                    "p-2.5 cursor-grab active:cursor-grabbing group flex items-center gap-2",
+                    "px-2 py-1.5 cursor-grab active:cursor-grabbing group flex items-center gap-1.5",
                     dragOverBlock === block.id && "bg-amber-500/10",
                     draggedBlock === block.id && "opacity-20"
                   )}
                 >
-                  <div className="flex flex-col gap-[2px] opacity-30 group-hover:opacity-50">
-                    <div className="w-2.5 h-[1.5px] bg-white" />
-                    <div className="w-2.5 h-[1.5px] bg-white" />
-                    <div className="w-2.5 h-[1.5px] bg-white" />
+                  <div className="flex flex-col gap-[1px] opacity-30 group-hover:opacity-50">
+                    <div className="w-2 h-[1px] bg-white" />
+                    <div className="w-2 h-[1px] bg-white" />
+                    <div className="w-2 h-[1px] bg-white" />
                   </div>
                   <span className={cn(
-                    "text-[10px] flex-1 truncate uppercase tracking-wide",
+                    "text-[8px] flex-1 truncate uppercase tracking-wide",
                     block.visible ? "text-white/70" : "text-white/40"
                   )}>
                     {block.title}
                   </span>
                   <button
                     onClick={() => toggleBlockLayout(block.id)}
-                    className="text-[9px] w-5 h-5 flex items-center justify-center bg-white/5 text-white/50 hover:bg-white/10 hover:text-white font-mono"
+                    className="text-[8px] w-4 h-4 flex items-center justify-center bg-white/5 text-white/50 hover:bg-white/10 hover:text-white font-mono"
                   >
                     {block.layout}
                   </button>
                   <button
                     onClick={() => toggleBlockVisibility(block.id)}
                     className={cn(
-                      "w-5 h-5 flex items-center justify-center transition-colors",
+                      "w-4 h-4 flex items-center justify-center transition-colors",
                       block.visible
                         ? "text-amber-500 hover:text-amber-400"
                         : "text-white/20 hover:text-white/40"
                     )}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                   </button>
                 </div>
 
-                {/* Text editing fields - shown when editing mode is on */}
+                {/* Text editing fields - compact, shown when editing mode is on */}
                 {isEditing && block.visible && (
-                  <div className="px-3 pb-3 space-y-2">
-                    <div>
-                      <label className="text-[8px] text-white/30 uppercase tracking-wider">Title</label>
-                      <input
-                        type="text"
-                        value={block.title}
-                        onChange={(e) => handleBlockUpdate({ ...block, title: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 text-white/90 text-[11px] px-2 py-1.5 focus:outline-none focus:border-amber-500/50"
-                        placeholder="Block title..."
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[8px] text-white/30 uppercase tracking-wider">Content</label>
-                      <textarea
-                        value={block.content}
-                        onChange={(e) => handleBlockUpdate({ ...block, content: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 text-white/90 text-[11px] px-2 py-1.5 focus:outline-none focus:border-amber-500/50 resize-none"
-                        placeholder="Block content..."
-                        rows={3}
-                      />
-                    </div>
+                  <div className="px-2 pb-2 space-y-1">
+                    <input
+                      type="text"
+                      value={block.title}
+                      onChange={(e) => handleBlockUpdate({ ...block, title: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 text-white/80 text-[9px] px-1.5 py-1 focus:outline-none focus:border-amber-500/50"
+                      placeholder="Title..."
+                    />
+                    <textarea
+                      value={block.content}
+                      onChange={(e) => handleBlockUpdate({ ...block, content: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 text-white/80 text-[9px] px-1.5 py-1 focus:outline-none focus:border-amber-500/50 resize-none leading-tight"
+                      placeholder="Content..."
+                      rows={2}
+                    />
                   </div>
                 )}
               </div>
