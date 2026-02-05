@@ -10,6 +10,7 @@ interface BlockProps {
   onUpdate: (block: BlockData) => void;
   styleConfig?: StyleConfig;
   styleVariant?: StyleVariant;
+  imageOverlay?: number; // 0-100, controls overlay darkness
 }
 
 interface DividerProps {
@@ -218,10 +219,24 @@ export const getStyleClasses = (styleConfig?: StyleConfig) => {
   };
 };
 
+// Helper to calculate image visibility from overlay value (0=show image, 100=dark)
+const getImageOpacity = (overlay: number, baseOpacity: number = 0.7) => {
+  // overlay 0 = full image (baseOpacity), overlay 100 = nearly hidden (0.1)
+  const factor = 1 - (overlay / 100) * 0.85;
+  return Math.max(0.1, baseOpacity * factor + (1 - overlay / 100) * 0.3);
+};
+
+const getOverlayOpacity = (overlay: number) => {
+  // overlay 0 = light overlay, overlay 100 = heavy overlay
+  return 0.3 + (overlay / 100) * 0.6; // Range: 0.3 to 0.9
+};
+
 // HERO BLOCK
-export const HeroBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 0, isEditing, onUpdate }) => {
+export const HeroBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 0, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
-  const image = referenceImages[imageIndex % referenceImages.length] || null;
+  const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.8);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -236,16 +251,16 @@ export const HeroBlock: React.FC<BlockProps> = ({ block, colors, referenceImages
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${image})`,
-            opacity: layoutA ? 0.6 : 0.75,
+            opacity: imgOpacity,
             filter: 'saturate(1.2) contrast(1.1)',
           }}
         />
       )}
-      {/* Multiple gradient overlays for depth */}
+      {/* Multiple gradient overlays for depth - controlled by overlay slider */}
       <div
         className="absolute inset-0"
         style={{
-          background: `linear-gradient(${layoutA ? '180deg' : '135deg'}, ${colors.dark}f5 0%, ${colors.dark}90 40%, ${colors.dark}40 70%, transparent 100%)`,
+          background: `linear-gradient(${layoutA ? '180deg' : '135deg'}, ${colors.dark} 0%, ${colors.dark}${Math.round(overlayStrength * 255).toString(16).padStart(2, '0')} 40%, ${colors.dark}${Math.round(overlayStrength * 0.5 * 255).toString(16).padStart(2, '0')} 70%, transparent 100%)`,
         }}
       />
       {/* Cinematic letterbox bars */}
@@ -291,9 +306,11 @@ export const HeroBlock: React.FC<BlockProps> = ({ block, colors, referenceImages
 };
 
 // LOGLINE BLOCK
-export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 1, isEditing, onUpdate }) => {
+export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 1, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.5);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -311,26 +328,26 @@ export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, referenceIma
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${image})`,
-              opacity: 0.15,
+              opacity: imgOpacity,
               filter: 'blur(2px)',
             }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: `linear-gradient(90deg, ${colors.dark} 0%, ${colors.dark}90 100%)` }}
+            style={{ background: `linear-gradient(90deg, ${colors.dark} 0%, rgba(0,0,0,${overlayStrength}) 100%)` }}
           />
         </>
       )}
 
       {/* Large quote marks decoration */}
       <div
-        className="absolute top-[10%] left-[5%] font-display text-[120px] leading-none opacity-[0.04] select-none"
+        className="absolute top-[10%] left-[5%] font-display text-[120px] leading-none opacity-[0.15] select-none"
         style={{ color: colors.accent }}
       >
         "
       </div>
       <div
-        className="absolute bottom-[5%] right-[5%] font-display text-[120px] leading-none opacity-[0.04] select-none rotate-180"
+        className="absolute bottom-[5%] right-[5%] font-display text-[120px] leading-none opacity-[0.15] select-none rotate-180"
         style={{ color: colors.accent }}
       >
         "
@@ -369,9 +386,10 @@ export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, referenceIma
 };
 
 // STORY BLOCK
-export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 2, isEditing, onUpdate }) => {
+export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 2, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
-  const image = referenceImages[imageIndex % referenceImages.length] || null;
+  const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.9);
 
   return (
     <div
@@ -387,6 +405,7 @@ export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
           style={{
             backgroundImage: `url(${image})`,
             filter: 'saturate(1.1) contrast(1.1)',
+            opacity: imgOpacity,
           }}
         >
           {/* Diagonal slice effect */}
@@ -418,7 +437,7 @@ export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
       <div className={`flex flex-col justify-center relative z-10 ${layoutA ? 'w-[55%]' : 'w-full'}`} style={{ padding: '5%' }}>
         {/* Section number */}
         <span
-          className="font-display text-[80px] absolute top-[5%] right-[5%] opacity-[0.04] select-none"
+          className="font-display text-[80px] absolute top-[5%] right-[5%] opacity-[0.15] select-none"
           style={{ color: colors.accent }}
         >
           02
@@ -450,9 +469,11 @@ export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 };
 
 // WORLD/CONCEPT BLOCK
-export const WorldBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 3, isEditing, onUpdate }) => {
+export const WorldBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 3, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.6);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -470,12 +491,12 @@ export const WorldBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${image})`,
-              opacity: layoutA ? 0.2 : 0.35,
+              opacity: imgOpacity,
             }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: `linear-gradient(135deg, ${colors.dark} 0%, ${colors.dark}80 100%)` }}
+            style={{ background: `linear-gradient(135deg, ${colors.dark} 0%, rgba(0,0,0,${overlayStrength}) 100%)` }}
           />
         </>
       )}
@@ -508,7 +529,7 @@ export const WorldBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 
       <div className="relative z-10 pl-8">
         <span
-          className="font-display text-[80px] absolute top-[-20%] right-[5%] opacity-[0.04] select-none"
+          className="font-display text-[80px] absolute top-[-20%] right-[5%] opacity-[0.15] select-none"
           style={{ color: colors.secondary }}
         >
           03
@@ -535,9 +556,11 @@ export const WorldBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 };
 
 // CHARACTER BLOCK
-export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 4, isEditing, onUpdate }) => {
+export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 4, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
-  const image = referenceImages[imageIndex % referenceImages.length] || null;
+  const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.9);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -552,7 +575,7 @@ export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceI
           className={`absolute ${layoutA ? 'right-0 top-0 bottom-0 w-[50%]' : 'inset-0'} bg-cover bg-center`}
           style={{
             backgroundImage: `url(${image})`,
-            opacity: layoutA ? 0.9 : 0.3,
+            opacity: imgOpacity,
             filter: 'contrast(1.15) saturate(1.1)',
           }}
         />
@@ -560,7 +583,7 @@ export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceI
       <div
         className={`absolute ${layoutA ? 'left-0 w-[70%]' : 'inset-0'}`}
         style={{
-          background: `linear-gradient(${layoutA ? '90deg' : '0deg'}, ${colors.dark} ${layoutA ? '60%' : '0%'}, transparent 100%)`,
+          background: `linear-gradient(${layoutA ? '90deg' : '0deg'}, ${colors.dark} ${layoutA ? `${Math.round(overlayStrength * 80)}%` : '0%'}, transparent 100%)`,
         }}
       />
 
@@ -575,7 +598,7 @@ export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceI
 
       <div className={`relative z-10 h-full flex flex-col justify-center ${layoutA ? 'w-[60%]' : 'w-full'}`} style={{ padding: '5%' }}>
         <span
-          className="font-display text-[80px] absolute top-[5%] left-[5%] opacity-[0.04] select-none"
+          className="font-display text-[80px] absolute top-[5%] left-[5%] opacity-[0.15] select-none"
           style={{ color: colors.accent }}
         >
           04
@@ -607,9 +630,11 @@ export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceI
 };
 
 // TONE/STYLE BLOCK
-export const ToneBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 5, isEditing, onUpdate }) => {
+export const ToneBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 5, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.6);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -627,13 +652,13 @@ export const ToneBlock: React.FC<BlockProps> = ({ block, colors, referenceImages
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${image})`,
-              opacity: 0.25,
+              opacity: imgOpacity,
               filter: 'saturate(0.8)',
             }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: `linear-gradient(180deg, ${colors.dark}f0 0%, ${colors.dark}80 100%)` }}
+            style={{ background: `linear-gradient(180deg, ${colors.dark} 0%, rgba(0,0,0,${overlayStrength}) 100%)` }}
           />
         </>
       )}
@@ -658,7 +683,7 @@ export const ToneBlock: React.FC<BlockProps> = ({ block, colors, referenceImages
 
       <div className="relative z-10">
         <span
-          className="font-display text-[80px] absolute top-[-10%] right-[5%] opacity-[0.04] select-none"
+          className="font-display text-[80px] absolute top-[-10%] right-[5%] opacity-[0.15] select-none"
           style={{ color: colors.accent }}
         >
           05
@@ -710,9 +735,11 @@ export const ToneBlock: React.FC<BlockProps> = ({ block, colors, referenceImages
 };
 
 // MOTIF BLOCK
-export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 6, isEditing, onUpdate }) => {
+export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 6, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.5);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -730,13 +757,13 @@ export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${image})`,
-              opacity: 0.2,
+              opacity: imgOpacity,
               filter: 'contrast(1.1)',
             }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: `linear-gradient(45deg, ${colors.dark} 0%, ${colors.dark}90 100%)` }}
+            style={{ background: `linear-gradient(45deg, ${colors.dark} 0%, rgba(0,0,0,${overlayStrength}) 100%)` }}
           />
         </>
       )}
@@ -757,11 +784,11 @@ export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 
       {/* Floating geometric shapes */}
       <div
-        className="absolute top-[10%] right-[10%] w-20 h-20 rotate-45 opacity-[0.05]"
+        className="absolute top-[10%] right-[10%] w-20 h-20 rotate-45 opacity-[0.15]"
         style={{ border: `1px solid ${colors.accent}` }}
       />
       <div
-        className="absolute bottom-[15%] left-[8%] w-16 h-16 rotate-12 opacity-[0.04]"
+        className="absolute bottom-[15%] left-[8%] w-16 h-16 rotate-12 opacity-[0.15]"
         style={{ border: `1px solid ${colors.secondary}` }}
       />
       <div
@@ -771,7 +798,7 @@ export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 
       <div className="relative z-10">
         <span
-          className="font-display text-[80px] absolute top-[-15%] right-[5%] opacity-[0.04] select-none"
+          className="font-display text-[80px] absolute top-[-15%] right-[5%] opacity-[0.15] select-none"
           style={{ color: colors.secondary }}
         >
           06
@@ -803,9 +830,11 @@ export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 };
 
 // THEME BLOCK
-export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 7, isEditing, onUpdate }) => {
+export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 7, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.4);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -823,13 +852,13 @@ export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${image})`,
-              opacity: 0.15,
+              opacity: imgOpacity,
               filter: 'blur(1px)',
             }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: `radial-gradient(ellipse at center, ${colors.dark}90 0%, ${colors.dark} 100%)` }}
+            style={{ background: `radial-gradient(ellipse at center, rgba(0,0,0,${overlayStrength}) 0%, ${colors.dark} 100%)` }}
           />
         </>
       )}
@@ -848,7 +877,7 @@ export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 
       <div className="relative z-10">
         <span
-          className="font-display text-[80px] absolute top-[-15%] right-[5%] opacity-[0.04] select-none"
+          className="font-display text-[80px] absolute top-[-15%] right-[5%] opacity-[0.15] select-none"
           style={{ color: colors.accent }}
         >
           07
@@ -891,9 +920,11 @@ export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 };
 
 // STAKES BLOCK
-export const StakesBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 8, isEditing, onUpdate }) => {
+export const StakesBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 8, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.5);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -911,13 +942,13 @@ export const StakesBlock: React.FC<BlockProps> = ({ block, colors, referenceImag
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${image})`,
-              opacity: 0.3,
+              opacity: imgOpacity,
               filter: 'contrast(1.2) saturate(0.8)',
             }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: `linear-gradient(90deg, ${colors.dark} 0%, ${colors.dark}70 100%)` }}
+            style={{ background: `linear-gradient(90deg, ${colors.dark} 0%, rgba(0,0,0,${overlayStrength * 0.8}) 100%)` }}
           />
         </>
       )}
@@ -950,7 +981,7 @@ export const StakesBlock: React.FC<BlockProps> = ({ block, colors, referenceImag
 
       <div className="relative z-10 pl-6">
         <span
-          className="font-display text-[100px] absolute top-[-5%] right-[5%] opacity-[0.05] select-none"
+          className="font-display text-[100px] absolute top-[-5%] right-[5%] opacity-[0.15] select-none"
           style={{ color: colors.accent }}
         >
           08
@@ -983,9 +1014,11 @@ export const StakesBlock: React.FC<BlockProps> = ({ block, colors, referenceImag
 };
 
 // CLOSING BLOCK
-export const ClosingBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 9, isEditing, onUpdate }) => {
+export const ClosingBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 9, isEditing, onUpdate, imageOverlay = 50 }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex % referenceImages.length] || null;
+  const imgOpacity = getImageOpacity(imageOverlay, 0.5);
+  const overlayStrength = getOverlayOpacity(imageOverlay);
 
   return (
     <div
@@ -1000,7 +1033,7 @@ export const ClosingBlock: React.FC<BlockProps> = ({ block, colors, referenceIma
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${image})`,
-            opacity: 0.25,
+            opacity: imgOpacity,
             filter: 'blur(3px) saturate(0.9)',
           }}
         />
@@ -1009,7 +1042,7 @@ export const ClosingBlock: React.FC<BlockProps> = ({ block, colors, referenceIma
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse at center, transparent 0%, ${colors.dark}80 50%, ${colors.dark} 100%)`,
+          background: `radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,${overlayStrength * 0.8}) 50%, ${colors.dark} 100%)`,
         }}
       />
 
@@ -1074,9 +1107,10 @@ export const renderBlock = (
   isEditing: boolean,
   onUpdate: (block: BlockData) => void,
   styleConfig?: StyleConfig,
-  styleVariant?: StyleVariant
+  styleVariant?: StyleVariant,
+  imageOverlay: number = 50
 ): React.ReactNode => {
-  const baseProps = { block, colors, referenceImages, isEditing, onUpdate, styleConfig, styleVariant };
+  const baseProps = { block, colors, referenceImages, isEditing, onUpdate, styleConfig, styleVariant, imageOverlay };
 
   // Each block type gets its own image slot (0-9)
   switch (block.type) {

@@ -193,6 +193,7 @@ export function App() {
   const [dragOverBlock, setDragOverBlock] = useState<string | null>(null);
   const [styleVariant, setStyleVariant] = useState<StyleVariant>('cinematic');
   const [previewMode, setPreviewMode] = useState<PreviewMode>('html');
+  const [imageOverlay, setImageOverlay] = useState<number>(50); // 0-100, controls overlay darkness
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -283,51 +284,76 @@ export function App() {
   }, [hasUnsavedChanges]);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Check if already at max images (10 - one per slide)
-    if (referenceImages.length >= 10) {
+    // Calculate how many slots are available
+    const availableSlots = 10 - referenceImages.length;
+    if (availableSlots <= 0) {
       showToast('Maximum 10 images allowed (one per slide)', 'error');
       return;
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      showToast('Please upload a valid image file', 'error');
-      return;
+    // Limit files to available slots
+    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    if (files.length > availableSlots) {
+      showToast(`Only adding ${availableSlots} images (max 10 total)`, 'info');
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('Image too large (max 10MB)', 'error');
+    // Validate all files first
+    const validFiles: File[] = [];
+    for (const file of filesToProcess) {
+      if (!file.type.startsWith('image/')) {
+        showToast(`Skipped "${file.name}" - not an image`, 'error');
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast(`Skipped "${file.name}" - too large (max 10MB)`, 'error');
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
       return;
     }
 
     setIsLoading(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const imageUrl = event.target?.result as string;
-      const newImages = [...referenceImages, imageUrl];
+
+    // Process all valid files
+    const readFile = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target?.result as string);
+        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+        reader.readAsDataURL(file);
+      });
+    };
+
+    try {
+      // Read all files in parallel
+      const imageUrls = await Promise.all(validFiles.map(readFile));
+
+      // Add all images at once
+      const newImages = [...referenceImages, ...imageUrls];
       setReferenceImages(newImages);
       setActiveImageIndex(newImages.length - 1);
 
+      // Extract colors from the first new image
       try {
-        const extractedColors = await extractColors(imageUrl);
+        const extractedColors = await extractColors(imageUrls[0]);
         setColors(extractedColors);
-        showToast('Image added & colors extracted', 'success');
       } catch (error) {
         console.error('Failed to extract colors:', error);
-        showToast('Image added but could not extract colors', 'error');
-      } finally {
-        setIsLoading(false);
       }
-    };
-    reader.onerror = () => {
+
+      showToast(`Added ${imageUrls.length} image${imageUrls.length > 1 ? 's' : ''}`, 'success');
+    } catch (error) {
+      console.error('Failed to process images:', error);
+      showToast('Some images failed to load', 'error');
+    } finally {
       setIsLoading(false);
-      showToast('Failed to read image file', 'error');
-    };
-    reader.readAsDataURL(file);
+    }
 
     // Reset file input
     if (fileInputRef.current) {
@@ -435,52 +461,103 @@ export function App() {
   const exportToPDF = useCallback(async () => {
     if (!previewRef.current) return;
 
-    // Switch to PDF mode temporarily to ensure all slides are visible
-    const previousMode = previewMode;
-    setPreviewMode('pdf');
-
     setIsExporting(true);
     showToast('Generating PDF...', 'info');
 
-    // Wait for mode switch and GSAP cleanup
-    await new Promise(resolve => setTimeout(resolve, 200));
-
     try {
+      // Get all slide blocks (excluding dividers for cleaner PDF)
       const element = previewRef.current;
+      const allSlides = element.querySelectorAll('.slide-block');
 
-      // Ensure all slides are fully visible for export
-      const slides = element.querySelectorAll('.slide-block');
-      slides.forEach((slide) => {
-        (slide as HTMLElement).style.opacity = '1';
-        (slide as HTMLElement).style.transform = 'none';
+      // Filter to get only content slides (not dividers - dividers are shorter)
+      const contentSlides: HTMLElement[] = [];
+      allSlides.forEach((slide) => {
+        const slideEl = slide as HTMLElement;
+        // Content slides have aspect-ratio 16/9, dividers are shorter
+        if (slideEl.offsetHeight > 100) {
+          contentSlides.push(slideEl);
+        }
       });
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: colors.dark,
-        logging: false,
-      });
+      if (contentSlides.length === 0) {
+        showToast('No slides to export', 'error');
+        setIsExporting(false);
+        return;
+      }
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      // Create PDF with 16:9 landscape pages
+      const pageWidth = 1920;
+      const pageHeight = 1080;
       const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        orientation: 'landscape',
         unit: 'px',
-        format: [canvas.width / 2, canvas.height / 2],
+        format: [pageWidth, pageHeight],
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+      // Process each slide individually
+      for (let i = 0; i < contentSlides.length; i++) {
+        const slide = contentSlides[i];
+
+        // Store original styles
+        const originalOpacity = slide.style.opacity;
+        const originalTransform = slide.style.transform;
+        const originalFilter = slide.style.filter;
+
+        // Reset any GSAP transforms for clean capture
+        slide.style.opacity = '1';
+        slide.style.transform = 'none';
+        slide.style.filter = 'none';
+
+        // Wait for style application
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const canvas = await html2canvas(slide, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: colors.dark,
+          logging: false,
+          width: slide.offsetWidth,
+          height: slide.offsetHeight,
+        });
+
+        // Restore original styles
+        slide.style.opacity = originalOpacity;
+        slide.style.transform = originalTransform;
+        slide.style.filter = originalFilter;
+
+        // Calculate dimensions to fit 16:9 page
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+        const finalWidth = imgWidth * ratio;
+        const finalHeight = imgHeight * ratio;
+        const x = (pageWidth - finalWidth) / 2;
+        const y = (pageHeight - finalHeight) / 2;
+
+        // Add new page for slides after the first
+        if (i > 0) {
+          pdf.addPage([pageWidth, pageHeight], 'landscape');
+        }
+
+        // Fill background
+        pdf.setFillColor(colors.dark);
+        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+        // Add slide image centered
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+      }
+
       pdf.save('pitch-deck.pdf');
-      showToast('PDF exported successfully', 'success');
+      showToast(`PDF exported (${contentSlides.length} pages)`, 'success');
     } catch (error) {
       console.error('Failed to export PDF:', error);
       showToast('Failed to export PDF', 'error');
     } finally {
       setIsExporting(false);
-      setPreviewMode(previousMode);
     }
-  }, [colors.dark, showToast, previewMode]);
+  }, [colors.dark, showToast]);
 
   const exportToImage = useCallback(async () => {
     if (!previewRef.current) return;
@@ -513,7 +590,7 @@ export function App() {
 
   const visibleBlocks = blocks.filter(b => b.visible);
 
-  // GSAP scroll animations for HTML preview - dynamic and varied
+  // GSAP scroll animations for HTML preview - dynamic parallax and text effects
   useEffect(() => {
     if (previewMode !== 'html') {
       // Kill any existing triggers when switching away from HTML mode
@@ -538,80 +615,168 @@ export function App() {
       slides.forEach((slide, index) => {
         const isEven = index % 2 === 0;
         const isThird = index % 3 === 0;
+        const isFifth = index % 5 === 0;
 
-        // Different animation patterns
+        // Different animation patterns for slides
         let fromVars: gsap.TweenVars;
         let toVars: gsap.TweenVars;
 
         if (index === 0) {
-          // Hero - dramatic scale up
-          fromVars = { opacity: 0, scale: 0.9, y: 0 };
-          toVars = { opacity: 1, scale: 1, y: 0, duration: 1.2, ease: 'power4.out' };
+          // Hero - dramatic scale up with cinematic feel
+          fromVars = { opacity: 0, scale: 0.85, y: 30 };
+          toVars = { opacity: 1, scale: 1, y: 0, duration: 1.5, ease: 'power4.out' };
+        } else if (isFifth) {
+          // Every fifth - dramatic zoom from center
+          fromVars = { opacity: 0, scale: 1.1, filter: 'blur(8px)' };
+          toVars = { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.2, ease: 'power3.out' };
         } else if (isThird) {
-          // Every third slide - slide from side with rotation
-          fromVars = { opacity: 0, x: isEven ? -80 : 80, rotateY: isEven ? -5 : 5 };
-          toVars = { opacity: 1, x: 0, rotateY: 0, duration: 1, ease: 'power3.out' };
+          // Every third slide - slide from side
+          fromVars = { opacity: 0, x: isEven ? -60 : 60 };
+          toVars = { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' };
         } else if (isEven) {
-          // Even slides - rise up with scale
-          fromVars = { opacity: 0, y: 100, scale: 0.95 };
-          toVars = { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power2.out' };
+          // Even slides - rise up
+          fromVars = { opacity: 0, y: 80 };
+          toVars = { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' };
         } else {
-          // Odd slides - fade with slight parallax
-          fromVars = { opacity: 0, y: 60, filter: 'blur(10px)' };
-          toVars = { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, ease: 'power2.out' };
+          // Odd slides - subtle fade in
+          fromVars = { opacity: 0, y: 40 };
+          toVars = { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out' };
         }
 
         gsap.fromTo(slide, fromVars, {
           ...toVars,
           scrollTrigger: {
             trigger: slide,
-            start: 'top 90%',
-            end: 'top 30%',
+            start: 'top 85%',
+            end: 'top 20%',
             toggleActions: 'play none none reverse',
-            scrub: index === 0 ? false : 0.5, // Scrub effect for smoother scrolling (except hero)
+            scrub: index === 0 ? false : 0.3,
           },
         });
 
-        // Animate internal elements for extra dynamism
-        const title = slide.querySelector('h3, .font-display');
-        const content = slide.querySelector('.font-body, textarea');
+        // PARALLAX: Background images move slower than content
+        const bgImage = slide.querySelector('[style*="background-image"]');
+        if (bgImage) {
+          gsap.fromTo(bgImage,
+            { yPercent: -10 },
+            {
+              yPercent: 10,
+              ease: 'none',
+              scrollTrigger: {
+                trigger: slide,
+                start: 'top bottom',
+                end: 'bottom top',
+                scrub: true,
+              },
+            }
+          );
+        }
 
-        if (title) {
+        // TEXT ANIMATIONS: Titles with character/word reveals
+        const titles = slide.querySelectorAll('h3, .font-display, .font-headline');
+        titles.forEach((title, titleIndex) => {
+          // Stagger animation for multiple title elements
           gsap.fromTo(title,
-            { opacity: 0, y: 20, clipPath: 'inset(0 100% 0 0)' },
+            {
+              opacity: 0,
+              y: 25,
+              skewY: 2,
+            },
             {
               opacity: 1,
               y: 0,
-              clipPath: 'inset(0 0% 0 0)',
-              duration: 0.6,
-              delay: 0.2,
-              ease: 'power2.out',
+              skewY: 0,
+              duration: 0.7,
+              delay: 0.15 + titleIndex * 0.1,
+              ease: 'power3.out',
               scrollTrigger: {
                 trigger: slide,
-                start: 'top 80%',
+                start: 'top 75%',
                 toggleActions: 'play none none reverse',
               },
             }
           );
-        }
+        });
 
-        if (content) {
+        // CONTENT TEXT: Fade and slide up with slight delay
+        const contents = slide.querySelectorAll('.font-body, p, span:not(.text-\\[7px\\]):not(.text-\\[8px\\]):not(.text-\\[9px\\])');
+        contents.forEach((content, contentIndex) => {
           gsap.fromTo(content,
-            { opacity: 0, y: 15 },
+            {
+              opacity: 0,
+              y: 20,
+            },
             {
               opacity: 1,
               y: 0,
-              duration: 0.5,
-              delay: 0.35,
+              duration: 0.6,
+              delay: 0.3 + contentIndex * 0.08,
               ease: 'power2.out',
               scrollTrigger: {
                 trigger: slide,
-                start: 'top 80%',
+                start: 'top 70%',
                 toggleActions: 'play none none reverse',
               },
             }
           );
-        }
+        });
+
+        // DECORATIVE ELEMENTS: Lines, boxes, accents
+        const decorativeLines = slide.querySelectorAll('[class*="h-\\[1px\\]"], [class*="h-\\[2px\\]"], [class*="w-\\[1px\\]"]');
+        decorativeLines.forEach((line, lineIndex) => {
+          gsap.fromTo(line,
+            { scaleX: 0, transformOrigin: 'left center' },
+            {
+              scaleX: 1,
+              duration: 0.8,
+              delay: 0.4 + lineIndex * 0.05,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: slide,
+                start: 'top 70%',
+                toggleActions: 'play none none reverse',
+              },
+            }
+          );
+        });
+
+        // COLOR SWATCHES: Pop in with scale
+        const swatches = slide.querySelectorAll('[class*="w-12"][class*="h-12"]');
+        swatches.forEach((swatch, swatchIndex) => {
+          gsap.fromTo(swatch,
+            { scale: 0, opacity: 0 },
+            {
+              scale: 1,
+              opacity: 1,
+              duration: 0.4,
+              delay: 0.5 + swatchIndex * 0.08,
+              ease: 'back.out(1.7)',
+              scrollTrigger: {
+                trigger: slide,
+                start: 'top 70%',
+                toggleActions: 'play none none reverse',
+              },
+            }
+          );
+        });
+
+        // SECTION NUMBERS: Simple fade in - no scale, stays subtle
+        const sectionNumbers = slide.querySelectorAll('.font-display.text-\\[80px\\], .font-display.text-\\[100px\\], .font-display.text-\\[120px\\]');
+        sectionNumbers.forEach((num) => {
+          // Set initial state and let CSS handle final opacity
+          gsap.set(num, { opacity: 0 });
+          gsap.to(num, {
+            opacity: 0.15, // Max 15% - never brighter
+            duration: 1.5,
+            delay: 0.3,
+            ease: 'power1.out',
+            scrollTrigger: {
+              trigger: slide,
+              start: 'top 80%',
+              toggleActions: 'play none none reverse',
+            },
+          });
+        });
       });
     }, 150);
 
@@ -680,6 +845,7 @@ export function App() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleImageUpload}
             className="hidden"
           />
@@ -809,6 +975,26 @@ export function App() {
                 <span className="text-[8px] text-white/30 mt-1.5 uppercase tracking-wide">{key.slice(0, 3)}</span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Image Overlay Control */}
+        <div className="p-4 sidebar-section">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[10px] text-white/50 uppercase tracking-[0.15em]">Overlay</label>
+            <span className="text-[9px] text-white/40 font-mono">{imageOverlay}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={imageOverlay}
+            onChange={(e) => setImageOverlay(Number(e.target.value))}
+            className="w-full h-1 bg-white/10 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:cursor-pointer"
+          />
+          <div className="flex justify-between text-[7px] text-white/30 mt-1">
+            <span>Show Image</span>
+            <span>Dark</span>
           </div>
         </div>
 
@@ -1069,7 +1255,7 @@ export function App() {
                     opacity: previewMode === 'pdf' ? 1 : undefined,
                   }}
                 >
-                  {renderBlock(block, colors, referenceImages, isEditing, handleBlockUpdate, styleConfigs[styleVariant], styleVariant)}
+                  {renderBlock(block, colors, referenceImages, isEditing, handleBlockUpdate, styleConfigs[styleVariant], styleVariant, imageOverlay)}
                 </div>
                 {/* Add divider between blocks (not after last block) */}
                 {index < visibleBlocks.length - 1 && (
