@@ -291,18 +291,37 @@ export const HeroBlock: React.FC<BlockProps> = ({ block, colors, referenceImages
 };
 
 // LOGLINE BLOCK
-export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUpdate }) => {
+export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 1, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
+  const image = referenceImages[imageIndex] || null;
 
   return (
     <div
       className="flex flex-col justify-center relative overflow-hidden"
       style={{
-        backgroundColor: layoutA ? colors.dark : `${colors.primary}08`,
+        backgroundColor: colors.dark,
         aspectRatio: '16/9',
         padding: '5%',
       }}
     >
+      {/* Background image if available */}
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${image})`,
+              opacity: 0.15,
+              filter: 'blur(2px)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(90deg, ${colors.dark} 0%, ${colors.dark}90 100%)` }}
+          />
+        </>
+      )}
+
       {/* Large quote marks decoration */}
       <div
         className="absolute top-[10%] left-[5%] font-display text-[120px] leading-none opacity-[0.04] select-none"
@@ -350,7 +369,7 @@ export const LoglineBlock: React.FC<BlockProps> = ({ block, colors, isEditing, o
 };
 
 // STORY BLOCK
-export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 1, isEditing, onUpdate }) => {
+export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 2, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex % referenceImages.length] || null;
 
@@ -431,8 +450,9 @@ export const StoryBlock: React.FC<BlockProps> = ({ block, colors, referenceImage
 };
 
 // WORLD/CONCEPT BLOCK
-export const WorldBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUpdate }) => {
+export const WorldBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 3, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
+  const image = referenceImages[imageIndex] || null;
 
   return (
     <div
@@ -443,13 +463,32 @@ export const WorldBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onU
         padding: '5%',
       }}
     >
+      {/* Background image if available */}
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${image})`,
+              opacity: layoutA ? 0.2 : 0.35,
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${colors.dark} 0%, ${colors.dark}80 100%)` }}
+          />
+        </>
+      )}
+
       {/* Geometric background pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `radial-gradient(circle at 20% 50%, ${colors.primary} 0%, transparent 50%), radial-gradient(circle at 80% 50%, ${colors.secondary} 0%, transparent 50%)`,
-        }}
-      />
+      {!image && (
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 20% 50%, ${colors.primary} 0%, transparent 50%), radial-gradient(circle at 80% 50%, ${colors.secondary} 0%, transparent 50%)`,
+          }}
+        />
+      )}
 
       {/* Corner frame decoration */}
       <div className="absolute top-[5%] left-[5%] w-20 h-20">
@@ -496,7 +535,7 @@ export const WorldBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onU
 };
 
 // CHARACTER BLOCK
-export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 2, isEditing, onUpdate }) => {
+export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 4, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex % referenceImages.length] || null;
 
@@ -568,8 +607,9 @@ export const CharacterBlock: React.FC<BlockProps> = ({ block, colors, referenceI
 };
 
 // TONE/STYLE BLOCK
-export const ToneBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUpdate }) => {
+export const ToneBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 5, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
+  const image = referenceImages[imageIndex] || null;
 
   return (
     <div
@@ -580,13 +620,33 @@ export const ToneBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUp
         padding: '5%',
       }}
     >
+      {/* Background image if available */}
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${image})`,
+              opacity: 0.25,
+              filter: 'saturate(0.8)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(180deg, ${colors.dark}f0 0%, ${colors.dark}80 100%)` }}
+          />
+        </>
+      )}
+
       {/* Color gradient background */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          background: `linear-gradient(135deg, ${colors.primary}30 0%, transparent 40%, ${colors.secondary}20 60%, transparent 100%)`,
-        }}
-      />
+      {!image && (
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            background: `linear-gradient(135deg, ${colors.primary}30 0%, transparent 40%, ${colors.secondary}20 60%, transparent 100%)`,
+          }}
+        />
+      )}
 
       {/* Scan lines effect */}
       <div
@@ -650,8 +710,9 @@ export const ToneBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUp
 };
 
 // MOTIF BLOCK
-export const MotifBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUpdate }) => {
+export const MotifBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 6, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
+  const image = referenceImages[imageIndex] || null;
 
   return (
     <div
@@ -662,6 +723,24 @@ export const MotifBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onU
         padding: '5%',
       }}
     >
+      {/* Background image if available */}
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${image})`,
+              opacity: 0.2,
+              filter: 'contrast(1.1)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(45deg, ${colors.dark} 0%, ${colors.dark}90 100%)` }}
+          />
+        </>
+      )}
+
       {/* Multiple geometric patterns */}
       <div
         className="absolute inset-0 opacity-[0.03]"
@@ -724,8 +803,9 @@ export const MotifBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onU
 };
 
 // THEME BLOCK
-export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUpdate }) => {
+export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 7, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
+  const image = referenceImages[imageIndex] || null;
 
   return (
     <div
@@ -736,6 +816,24 @@ export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onU
         padding: '5%',
       }}
     >
+      {/* Background image if available */}
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${image})`,
+              opacity: 0.15,
+              filter: 'blur(1px)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `radial-gradient(ellipse at center, ${colors.dark}90 0%, ${colors.dark} 100%)` }}
+          />
+        </>
+      )}
+
       {/* Subtle radial gradient background */}
       <div
         className="absolute inset-0"
@@ -793,8 +891,9 @@ export const ThemeBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onU
 };
 
 // STAKES BLOCK
-export const StakesBlock: React.FC<BlockProps> = ({ block, colors, isEditing, onUpdate }) => {
+export const StakesBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 8, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
+  const image = referenceImages[imageIndex] || null;
 
   return (
     <div
@@ -805,6 +904,24 @@ export const StakesBlock: React.FC<BlockProps> = ({ block, colors, isEditing, on
         padding: '5%',
       }}
     >
+      {/* Background image if available */}
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${image})`,
+              opacity: 0.3,
+              filter: 'contrast(1.2) saturate(0.8)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(90deg, ${colors.dark} 0%, ${colors.dark}70 100%)` }}
+          />
+        </>
+      )}
+
       {/* Dramatic gradient overlays */}
       <div
         className="absolute inset-0"
@@ -866,7 +983,7 @@ export const StakesBlock: React.FC<BlockProps> = ({ block, colors, isEditing, on
 };
 
 // CLOSING BLOCK
-export const ClosingBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 3, isEditing, onUpdate }) => {
+export const ClosingBlock: React.FC<BlockProps> = ({ block, colors, referenceImages, imageIndex = 9, isEditing, onUpdate }) => {
   const layoutA = block.layout === 'A';
   const image = referenceImages[imageIndex % referenceImages.length] || null;
 
@@ -961,27 +1078,28 @@ export const renderBlock = (
 ): React.ReactNode => {
   const baseProps = { block, colors, referenceImages, isEditing, onUpdate, styleConfig, styleVariant };
 
+  // Each block type gets its own image slot (0-9)
   switch (block.type) {
     case 'hero':
       return <HeroBlock {...baseProps} imageIndex={0} />;
     case 'logline':
-      return <LoglineBlock {...baseProps} />;
+      return <LoglineBlock {...baseProps} imageIndex={1} />;
     case 'story':
-      return <StoryBlock {...baseProps} imageIndex={1} />;
+      return <StoryBlock {...baseProps} imageIndex={2} />;
     case 'world':
-      return <WorldBlock {...baseProps} />;
+      return <WorldBlock {...baseProps} imageIndex={3} />;
     case 'character':
-      return <CharacterBlock {...baseProps} imageIndex={2} />;
+      return <CharacterBlock {...baseProps} imageIndex={4} />;
     case 'tone':
-      return <ToneBlock {...baseProps} />;
+      return <ToneBlock {...baseProps} imageIndex={5} />;
     case 'motif':
-      return <MotifBlock {...baseProps} />;
+      return <MotifBlock {...baseProps} imageIndex={6} />;
     case 'theme':
-      return <ThemeBlock {...baseProps} />;
+      return <ThemeBlock {...baseProps} imageIndex={7} />;
     case 'stakes':
-      return <StakesBlock {...baseProps} />;
+      return <StakesBlock {...baseProps} imageIndex={8} />;
     case 'closing':
-      return <ClosingBlock {...baseProps} imageIndex={3} />;
+      return <ClosingBlock {...baseProps} imageIndex={9} />;
     case 'divider':
       if (styleConfig && styleVariant) {
         return <DividerBlock colors={colors} styleConfig={styleConfig} styleVariant={styleVariant} />;
