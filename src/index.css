@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+:root {
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-headline: 'Oswald', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background: #050507;
+  color: #f5f5f5;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-headline {
+  font-family: var(--font-headline);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Toast slide-up animation */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+/* Shimmer animation for loading states */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Gradient text - subtle */
+.gradient-text {
+  color: #f5f5f5;
+}
+
+/* Clean panel style */
+.panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Smooth transitions */
+.transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Custom focus styles */
+input:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+}
+
+/* Prevent text selection during drag */
+[draggable="true"] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Block hover effect */
+.block-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.block-card:hover {
+  transform: translateX(4px);
+}
+
+/* Image slot styling */
+.image-slot {
+  transition: all 0.15s ease;
+}
+
+.image-slot:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.image-slot-empty {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.image-slot-empty:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Color swatch styling */
+.color-swatch {
+  transition: all 0.15s ease;
+}
+
+.color-swatch:hover {
+  opacity: 0.85;
+}
+
+/* Sidebar section styling */
+.sidebar-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Button press effect */
+.btn-press:active {
+  transform: scale(0.97);
+}
+
